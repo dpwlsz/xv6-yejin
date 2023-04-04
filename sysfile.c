@@ -442,3 +442,14 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
+
+int sys_hello(void) {
+  char* msg;
+ 
+  if(argstr(0, &msg) < 0) {
+    return -1;
+  }
+ 
+  cprintf("HELLO %s\n", msg);
+  return 0;
+}
