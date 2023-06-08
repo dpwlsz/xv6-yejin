@@ -532,3 +532,83 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+int clone(void (*fcn)(void *, void *), void *arg1, void *arg2, void *stack){
+ 
+
+  // 새로운 스레드를 위해 프로세스 생성
+  struct proc *np = allocproc();
+  if (np == 0) {
+      return -1;
+  }
+
+  // 새로운 스레드와 부모 프로세스가 같은 페이지 디렉터리를 공유
+  np->pgdir = myproc()->pgdir;
+
+  // 스택 할당
+  if ((uint)stack + PGSIZE > myproc()->sz || (uint)stack < myproc()->sz - 200 * PGSIZE) {
+      return -1;
+  }
+
+  // 스레드 컨텍스트 설정
+  np->tf->eax = 0;  // 새로운 스레드가 clone 함수에서 성공적으로 반환되도록 함
+  np->tf->eip = (uint)fcn;  // 새로운 스레드가 실행할 함수 지정
+  np->tf->esp = (uint)stack + PGSIZE - 4;  // 스택 포인터 설정
+
+  // 인수 전달
+  *(void**)(np->tf->esp) = arg2;
+  *(void**)(np->tf->esp - 4) = arg1;
+
+  // 스레드 pid 반환
+  return np->pid;
+}
+
+// tread join을 하는 함수.
+int join(void *stack){
+  struct proc *p;
+  int havekids, pid;
+  struct proc *curproc = myproc();
+
+  acquire(&ptable.lock);
+
+  for(;;){
+    // 자식 스레드 찾기
+    havekids = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->parent != curproc || p->isThread == 0)
+        continue;
+      havekids = 1;
+      if(p->state == ZOMBIE){
+        // 스레드가 종료될 때까지 대기
+        // 자식 스레드의 스택 메모리 해제
+        // 자식 스레드의 페이지 디렉터리 해제
+        // 자식 스레드 제거
+        // 자식 스레드의 프로세스 구조체 반환 
+        pid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        freevm(p->pgdir);
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->isThread = 0;
+        p->killed = 0;
+        p->state = UNUSED;
+        stack = (void*)p->tf->esp;
+        p->tf->esp = 0;
+        p->tf->eip = 0;
+        release(&ptable.lock);
+        return pid;
+      }
+    }
+
+    // 자식 스레드가 없으면 종료
+    if(!havekids || curproc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // 자식 스레드가 종료될 때까지 대기
+    sleep(curproc, &ptable.lock);  //DOC: wait-sleep
+  }
+}

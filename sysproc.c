@@ -93,54 +93,16 @@ sys_uptime(void)
 int
 sys_clone(void)
 {
-  void (*fcn)(void *, void *);
+  void (*fcn)(void*, void*);
   void *arg1, *arg2, *stack;
 
-  if (argptr(0, (void *)&fcn, sizeof(*fcn)) < 0 ||
-      argptr(1, &arg1, sizeof(*arg1)) < 0 ||
-      argptr(2, &arg2, sizeof(*arg2)) < 0 ||
-      argptr(3, &stack, PGSIZE) < 0)
-    return -1;
+  if (argptr(0, (void*)&fcn, sizeof(void*)) < 0 ||
+      argptr(1, (void*)&arg1, sizeof(void*)) < 0 ||
+      argptr(2, (void*)&arg2, sizeof(void*)) < 0 ||
+      argptr(3, (void*)&stack, sizeof(void*)) < 0)
+      return -1;
 
-  int i, pid;
-  struct proc *np;
-  struct proc *curproc = myproc();
-
-  if ((np = allocproc()) == 0)
-    return -1;
-
-  np->pgdir = curproc->pgdir; // Share address space with the parent process
-  np->sz = curproc->sz;
-
-  // Set up new thread's stack
-  memset(np->tf, 0, sizeof(*np->tf));
-  np->tf->esp = (uint)stack + PGSIZE;
-  np->tf->ebp = np->tf->esp;
-  np->tf->eip = (uint)fcn;
-
-  // Pass arguments to the new thread
-  np->tf->edx = (uint)arg1;
-  np->tf->ecx = (uint)arg2;
-
-  // Clear %eax so that fork returns 0 in the child process
-  np->tf->eax = 0;
-
-  for (i = 0; i < NOFILE; i++)
-    if (curproc->ofile[i])
-      np->ofile[i] = filedup(curproc->ofile[i]);
-  np->cwd = idup(curproc->cwd);
-
-  safestrcpy(np->name, curproc->name, sizeof(curproc->name));
-
-  pid = np->pid;
-
-  acquire(&ptable.lock);
-
-  np->state = RUNNABLE;
-
-  release(&ptable.lock);
-
-  return pid;
+  return clone(fcn, arg1, arg2, stack);
 }
 
 int
@@ -153,11 +115,7 @@ sys_join(void)
         return -1;
     }
 
-    // 자식 스레드를 대기
-    int tid = jointhread((uint)stack);
-
-    // 스레드 id 반환
-    return tid;
+    return join(stack);
 }
 
 
