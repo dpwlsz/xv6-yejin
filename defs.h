@@ -120,7 +120,6 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
-int             getyear(void);
 int             clone(void (*function)(void*), void*, void*);
 int             join(int, void**);
 

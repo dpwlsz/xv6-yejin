@@ -553,12 +553,6 @@ procdump(void)
 }
 
 int
-getyear(void)
-{
-  return 2021;
-}
-
-int
 clone(void (*function)(void*), void* arg, void* stack)
 {
   int i, pid;

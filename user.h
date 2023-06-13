@@ -23,7 +23,6 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int getyear(void);
 int clone(void (*function)(void*), void*, void*);
 int join(int, void**);
 

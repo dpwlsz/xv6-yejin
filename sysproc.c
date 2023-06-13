@@ -91,12 +91,6 @@ sys_uptime(void)
 }
 
 int
-sys_getyear(void)
-{
-  return getyear();
-}
-
-int
 sys_clone(void)
 {
   int function, arg, stack;
