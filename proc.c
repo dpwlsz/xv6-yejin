@@ -552,15 +552,14 @@ procdump(void)
   }
 }
 
-int
-clone(void (*function)(void*), void* arg, void* stack)
+int clone(void (*function)(void*, void*), void* arg1, void* arg2, void* stack)
 {
   int i, pid;
   struct proc *np;
   struct proc *curproc = myproc();
 
   // Allocate process.
-  if((np = allocproc()) == 0){
+  if ((np = allocproc()) == 0) {
     return -1;
   }
 
@@ -572,17 +571,28 @@ clone(void (*function)(void*), void* arg, void* stack)
   np->parent = curproc;
   *np->tf = *curproc->tf;
 
-  // Stack pointer is at the bottom, bring it up; push return
-  // address and arg
-  *(uint*)(stack + PGSIZE - 1 * sizeof(void *)) = (uint)arg;
-  *(uint*)(stack + PGSIZE - 2 * sizeof(void *)) = 0xFFFFFFFF;
+  // Calculate the top of the stack
+  uint stack_top = (uint)stack + PGSIZE;
+
+  // Push return address and arguments onto the stack
+  stack_top -= sizeof(void*);
+  *(uint*)(stack_top) = (uint)arg2;
+
+  stack_top -= sizeof(void*);
+  *(uint*)(stack_top) = (uint)arg1;
+
+  stack_top -= sizeof(void*);
+  *(uint*)(stack_top) = 0xffffffff;
 
   // Set esp (stack pointer register) and ebp (stack base register)
   // eip (instruction pointer register)
-  np->tf->esp = (uint)stack + PGSIZE - 2 * sizeof(void*);
-  np->tf->ebp = np->tf->esp;
-  np->tf->eip = (uint) function;
-
+  np->tf->esp = stack_top;
+  np->tf->ebp = stack_top - sizeof(void*);
+ 
+ 
+  // set eip
+  np->tf->eip = (uint)function;
+  
   // Set thread stack
   np->tstack = stack;
 
@@ -591,9 +601,11 @@ clone(void (*function)(void*), void* arg, void* stack)
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
-  for(i = 0; i < NOFILE; i++)
-    if(curproc->ofile[i])
+  for (i = 0; i < NOFILE; i++) {
+    if (curproc->ofile[i]) {
       np->ofile[i] = filedup(curproc->ofile[i]);
+    }
+  }
   np->cwd = idup(curproc->cwd);
 
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));

@@ -3,7 +3,7 @@
 #include "mmu.h"
 #include "thread.h"
 
-int thread_create(void (*function) (void *), void *arg)
+int thread_create(void (*function) (void *, void *), void *arg1, void *arg2)
 {
     void *stack = malloc(PGSIZE);
 
@@ -12,7 +12,7 @@ int thread_create(void (*function) (void *), void *arg)
     if ((uint)stack % PGSIZE != 0)
         stack += PGSIZE - ((uint)stack % PGSIZE);
     
-    return clone(function, arg, stack);
+    return clone(function, arg1, arg2, stack);
 }
 
 int thread_join(int tid)
